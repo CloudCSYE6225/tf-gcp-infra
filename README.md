@@ -10,17 +10,18 @@ Installed Terraform.
 Configured your Google Cloud Platform authentication credentials.
 
 ## Command used
-terraform init
-terraform plan
-terraform apply
+terraform init<br>
+terraform plan<br>
+terraform apply<br>
 
 
 ## Inputs
-project_id: The ID of the Google Cloud Platform project.
-region: The region where the VPC and subnetworks will be created.
-vpc_name: The name of the VPC.
-webapp_subnet_name: The name of the webapp subnet.
-webapp_subnet_cidr: The CIDR range for the webapp subnet.
-db_subnet_name: The name of the db subnet.
-db_subnet_cidr: The CIDR range for the db subnet.
+project_id: The ID of the Google Cloud Platform project.<br>
+region: The region where the VPC and subnetworks will be created.<br>
+vpc_name: The name of the VPC.<br>
+webapp_subnet_name: The name of the webapp subnet.<br>
+webapp_subnet_cidr: The CIDR range for the webapp subnet.<br>
+db_subnet_name: The name of the db subnet.<br>
+db_subnet_cidr: The CIDR range for the db subnet.<br>
+
 
