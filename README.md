@@ -1,6 +1,6 @@
 # tf-gcp-infra
 ## Terraform Google Cloud Platform VPC Configuration
-This Terraform configuration creates a Virtual Private Cloud (VPC) on Google Cloud Platform (GCP) with two subnetworks (webapp and db) and a route for the webapp subnet to allow internet access.
+This Terraform configuration creates a Virtual Private Cloud (VPC) on Google Cloud Platform (GCP) with two subnetworks (webapp and db) and a route for the webapp subnet to allow internet access, enable only compute engine api only not all the apis
 
 
 ## Prerequisites
