@@ -10,9 +10,9 @@ Installed Terraform.
 Configured your Google Cloud Platform authentication credentials.
 
 ## Command used
-terraform init
-terraform plan
-terraform apply
+terraform init<br>
+terraform plan<br>
+terraform apply<br>
 
 
 ## Inputs
