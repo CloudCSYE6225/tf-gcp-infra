@@ -30,4 +30,3 @@ resource "google_compute_route" "webapp_internet" {
   dest_range       = "0.0.0.0/0"
   network          = google_compute_network.vpc.id
   next_hop_gateway = "default-internet-gateway"
-}
