@@ -61,3 +61,7 @@ variable "image" {
   description = "The name of the machine image that has been created."
   type        = string
 }
+variable "routing_mode" {
+  description = "The describs the routing mode."
+  type        = string
+}
