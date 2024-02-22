@@ -37,3 +37,27 @@ variable "webapp_route_name" {
   description = "The name of the route for internet access from the webapp subnet."
   type        = string
 }
+variable "zone" {
+  description = "The GCP zone where the resources will be deployed."
+  type        = string
+}
+variable "name" {
+  description = "The VM name instences thatis to be created ."
+  type        = string
+}
+variable "machine_type" {
+  description = "The machinetype of the instance that has be created."
+  type        = string
+}
+variable "type" {
+  description = "The type of the machine that has be created."
+  type        = string
+}
+variable "size" {
+  description = "The size of the boot drive."
+  type        = number
+}
+variable "image" {
+  description = "The name of the machine image that has been created."
+  type        = string
+}
