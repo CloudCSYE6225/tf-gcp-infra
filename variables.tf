@@ -1,67 +1,124 @@
 variable "project_id" {
-  description = "The GCP project ID where the resources will be deployed."
   type        = string
+  description = "The ID of the Google Cloud project"
 }
 
 variable "region" {
-  description = "The GCP region where the resources will be deployed."
   type        = string
+  description = "The region where resources will be created"
 }
 
 variable "vpc_name" {
-  description = "The name of the VPC to be created."
   type        = string
+  description = "The name of the VPC"
 }
 
-variable "webapp_subnet_name" {
-  description = "The name of the webapp subnet."
+variable "webapp_name" {
   type        = string
+  description = "The name of the web application"
 }
 
-variable "db_subnet_name" {
-  description = "The name of the db subnet."
+variable "db_name" {
   type        = string
+  description = "The name of the database"
+}
+
+variable "webapp_routename" {
+  type        = string
+  description = "The name of the route for the web application"
 }
 
 variable "webapp_subnet_cidr" {
-  description = "CIDR block for the webapp subnet."
   type        = string
+  description = "The CIDR range for the web application subnet"
 }
 
 variable "db_subnet_cidr" {
-  description = "CIDR block for the db subnet."
   type        = string
+  description = "The CIDR range for the database subnet"
 }
 
-variable "webapp_route_name" {
-  description = "The name of the route for internet access from the webapp subnet."
+variable "dest_range" {
   type        = string
+  description = "The destination range for the firewall rule"
 }
+
+variable "firewall_name" {
+  type        = string
+  description = "The name of the firewall rule"
+}
+
+variable "app_protocol" {
+  type        = string
+  description = "The protocol for the application"
+}
+
+variable "app_ports" {
+  type        = list(number)
+  description = "The ports for the application"
+}
+
+variable "app_ports_ssh" {
+  type        = list(number)
+  description = "The SSH ports for the application"
+}
+
+variable "source_ranges" {
+  type        = list(string)
+  description = "The source IP ranges for the firewall rule"
+}
+
 variable "zone" {
-  description = "The GCP zone where the resources will be deployed."
   type        = string
+  description = "The zone where resources will be created"
 }
-variable "name" {
-  description = "The VM name instences thatis to be created ."
+
+variable "instance_name" {
   type        = string
+  description = "The name of the VM instance"
 }
+
 variable "machine_type" {
-  description = "The machinetype of the instance that has be created."
   type        = string
+  description = "The machine type for the VM instance"
 }
-variable "type" {
-  description = "The type of the machine that has be created."
+
+variable "instance_image" {
   type        = string
+  description = "The image for the VM instance"
 }
-variable "size" {
-  description = "The size of the boot drive."
+
+variable "boot_disk_type" {
+  type        = string
+  description = "The type of boot disk for the VM instance"
+}
+
+variable "disk_size_gb" {
   type        = number
+  description = "The size of the boot disk for the VM instance"
 }
-variable "image" {
-  description = "The name of the machine image that has been created."
+
+variable "instance_network" {
   type        = string
+  description = "The network for the VM instance"
 }
+
+variable "instance_subnet" {
+  type        = string
+  description = "The subnet for the VM instance"
+}
+
 variable "routing_mode" {
-  description = "The describs the routing mode."
   type        = string
+  description = "The routing mode for the network"
+}
+
+variable "database_name" {
+  type        = string
+  description = "The name of the database"
+}
+
+variable "user_name" {
+  type        = string
+  description = "The username for the database"
 }
