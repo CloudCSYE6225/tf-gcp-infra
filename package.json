@@ -1,0 +1,6 @@
+{
+  "dependencies": {
+    "@google-cloud/logging-winston": "^6.0.0",
+    "winston": "^3.12.0"
+  }
+}
