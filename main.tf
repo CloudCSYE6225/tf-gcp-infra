@@ -85,6 +85,12 @@ resource "google_compute_instance" "vm_instance" {
       // Ephemeral IP assigned here
     }
   }
+
+  service_account {
+    email  = google_service_account.webapp_service_account.email
+    scopes = ["logging-write", "monitoring-write"]
+  }
+
   metadata_startup_script = <<-SCRIPT
     # Ensure /opt/webapp directory exists
     mkdir -p /opt/webapp
@@ -150,4 +156,35 @@ resource "google_sql_user" "webapp_user" {
   name     = var.user_name
   instance = google_sql_database_instance.cloudsql_instance.name
   password = random_password.password.result
+}
+
+resource "google_dns_record_set" "a_record" {
+  name         = "deepaksundar.me."
+  type         = "A"
+  ttl          = 300
+  managed_zone = "my-webapp-zone"
+  rrdatas      = [google_compute_instance.vm_instance.network_interface[0].access_config[0].nat_ip]
+}
+
+resource "google_service_account" "webapp_service_account" {
+  account_id   = "webapp"
+  display_name = "Service Account for webapp insatnce"
+  project      = var.project_id
+
+}
+
+resource "google_project_iam_binding" "logging_admin_iam_role" {
+  project = var.project_id
+  role    = "roles/logging.admin"
+  members = [
+    google_service_account.webapp_service_account.member,
+  ]
+}
+resource "google_project_iam_binding" "monitoring_metric_writer_role" {
+  project = var.project_id
+  role    = "roles/monitoring.metricWriter"
+
+  members = [
+    google_service_account.webapp_service_account.member,
+  ]
 }
