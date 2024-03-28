@@ -22,5 +22,5 @@ vpc_name: The name of the VPC.<br>
 webapp_subnet_name: The name of the webapp subnet.<br>
 webapp_subnet_cidr: The CIDR range for the webapp subnet.<br>
 db_subnet_name: The name of the db subnet.<br>
-db_subnet_cidr: The CIDR range for the db subnet.<br>
+db_subnet_cidr: The CIDR range for the db1 subnet.<br>
 
