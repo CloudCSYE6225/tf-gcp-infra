@@ -86,10 +86,7 @@ resource "google_compute_instance" "vm_instance" {
     }
   }
 
-  service_account {
-    email  = google_service_account.webapp_service_account.email
-    scopes = ["logging-write", "monitoring-write"]
-  }
+
 
   metadata_startup_script = <<-SCRIPT
     # Ensure /opt/webapp directory exists
@@ -113,6 +110,10 @@ resource "google_compute_instance" "vm_instance" {
     sudo systemctl enable csye6225.service
     echo "working 4"
   SCRIPT
+    service_account {
+    email  = google_service_account.webapp_service_account.email
+    scopes = ["logging-write", "monitoring-write","https://www.googleapis.com/auth/pubsub"]
+  }
 }
 
 resource "google_sql_database_instance" "cloudsql_instance" {
@@ -188,3 +189,137 @@ resource "google_project_iam_binding" "monitoring_metric_writer_role" {
     google_service_account.webapp_service_account.member,
   ]
 }
+resource "google_project_iam_binding" "pubsub-publisher" {
+  project = var.project_id
+  role    = "roles/pubsub.publisher"
+
+  members = [
+    google_service_account.webapp_service_account.member,
+  ]
+}
+
+resource "google_pubsub_topic" "verify_email" {
+  name = var.topic_name
+  message_retention_duration = var.duration
+}
+
+resource "google_pubsub_subscription" "verify_email_subscription" {
+  name = var.subscription_name
+  topic = google_pubsub_topic.verify_email.name
+
+  ack_deadline_seconds = 20
+}
+
+resource "google_storage_bucket" "bucket" {
+  name     = var.bucket_name
+  location = var.bucket_location
+}
+
+resource "google_storage_bucket_object" "archive" {
+  name   = "serverless.zip"
+  bucket = google_storage_bucket.bucket.name
+  source = "C:/Users/deepu/OneDrive/Documents/GitHub/serverless.zip"
+}
+
+resource "google_compute_router" "router" {
+  project = var.project_id
+  name = var.router_name
+  region = var.region
+  network = google_compute_network.vpc.name
+
+  bgp{
+    asn = 64514
+  }
+
+}
+
+resource "google_compute_router_nat" "nat" {
+  project = var.project_id
+  name = var.nat_name
+  router = google_compute_router.router.name
+  region = var.region
+
+  nat_ip_allocate_option = "AUTO_ONLY"
+  source_subnetwork_ip_ranges_to_nat = "ALL_SUBNETWORKS_ALL_IP_RANGES"
+
+  min_ports_per_vm = 64
+
+  log_config {
+    enable = true
+    filter = "ALL"
+  }
+}
+
+resource "google_vpc_access_connector" "serverless_connector" {
+  provider = google-beta
+  name = "serverless-connector"
+  project = var.project_id
+  region = var.region
+  network = google_compute_network.vpc.name
+  ip_cidr_range = "10.8.0.0/28"
+  min_throughput = 200
+  max_throughput = 300
+}
+
+resource "google_cloudfunctions2_function" "app" {
+  name        = "sendVerificationEmail"
+  location    = var.region
+  description = "Function to send verification emails via Mailgun"
+
+  build_config {
+    runtime     = "nodejs20"
+    entry_point = "sendVerificationEmail" # Set the entry point
+    source {
+      storage_source {
+         bucket = google_storage_bucket.bucket.name
+         object = google_storage_bucket_object.archive.name
+      }
+    }
+  }
+
+    service_config {
+    environment_variables = {
+     DOMAIN = var.domain_name,
+     APIKEY = var.api_key,
+     DB_HOST = google_sql_database_instance.cloudsql_instance.private_ip_address,
+     DB_USER = var.user_name,
+     DB_PASSWORD = random_password.password.result,
+     DB_NAME = var.database_name,
+     DB_PORT = var.port_no
+    }
+    service_account_email          = google_service_account.webapp_service_account.email
+    vpc_connector                  = google_vpc_access_connector.serverless_connector.id
+    vpc_connector_egress_settings  = "ALL_TRAFFIC" 
+
+  }
+
+    event_trigger {
+    trigger_region = var.region
+    event_type     = "google.cloud.pubsub.topic.v1.messagePublished"
+    pubsub_topic   = google_pubsub_topic.verify_email.id
+    retry_policy   = "RETRY_POLICY_RETRY"
+  }
+}
+
+# resource "google_cloudfunctions_function" "app" {
+#   name        = "sendVerificationEmail"
+#   description = "Function to send verification emails via Mailgun"
+#   runtime     = "nodejs20"
+#   timeout = 540
+#   available_memory_mb   = 128
+#   source_archive_bucket = google_storage_bucket.bucket.name
+#   source_archive_object = google_storage_bucket_object.archive.name
+#   entry_point           = "serverless"
+#   event_trigger {
+#     event_type = "google.pubsub.topic.publish"
+#     resource = google_pubsub_topic.verify_email.id
+#     failure_policy {
+#       retry = false
+#     }
+#   }
+
+#   environment_variables = {
+#     MAILGUN_DOMAIN = "deepaksundar.me",
+#     MAILGUN_API_KEY = "8c6f1d9935cc28e3d0adf07ad72903b8-309b0ef4-a193e503"
+#   }
+# }

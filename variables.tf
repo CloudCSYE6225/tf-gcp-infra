@@ -122,3 +122,55 @@ variable "user_name" {
   type        = string
   description = "The username for the database"
 }
+
+
+variable "topic_name" {
+  description = "The name of the Pub/Sub topic for email verification"
+  type        = string
+  default     = "verify_email"
+}
+
+variable "duration" {
+  description = "The duration in seconds for which emails should be retained"
+  type        = string
+}
+
+variable "subscription_name" {
+  description = "The name of the Pub/Sub subscription for email verification"
+  type        = string
+
+}
+
+variable "bucket_name" {
+  description = "The name of the Google Cloud Storage bucket"
+  type        = string
+}
+
+variable "bucket_location" {
+  description = "The location of the Google Cloud Storage bucket"
+  type        = string
+}
+variable "domain_name" {
+  type        = string
+  description = "The domain name for the application"
+}
+
+variable "api_key" {
+  type        = string
+  description = "The API key for the application"
+}
+
+variable "router_name" {
+  type        = string
+  description = "The name of the router"
+}
+
+variable "nat_name" {
+  type        = string
+  description = "The name of the NAT gateway"
+}
+
+variable "port_no" {
+  type        = number
+  description = "The port number"
+}
