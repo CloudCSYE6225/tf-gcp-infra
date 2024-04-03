@@ -175,6 +175,7 @@ variable "port_no" {
   description = "The port number"
 }
 
+
 variable "max_replicas" {
   description = "Maximum number of replicas for autoscaling"
   type        = number
