@@ -61,60 +61,60 @@ resource "google_compute_firewall" "allow_app_traffic" {
     protocol = var.app_protocol
     ports    = var.app_ports
   }
-  source_ranges = var.source_ranges
+  source_ranges = ["130.211.0.0/22", "35.191.0.0/16"]
 }
 
 
-resource "google_compute_instance" "vm_instance" {
-  name         = var.instance_name
-  machine_type = var.machine_type
-  zone         = var.zone
-  tags         = ["http-server"]
-  boot_disk {
-    initialize_params {
-      image = var.instance_image
-      size  = var.disk_size_gb
-      type  = var.boot_disk_type
-    }
-  }
+# resource "google_compute_instance" "vm_instance" {
+#   name         = var.instance_name
+#   machine_type = var.machine_type
+#   zone         = var.zone
+#   tags         = ["http-server"]
+#   boot_disk {
+#     initialize_params {
+#       image = var.instance_image
+#       size  = var.disk_size_gb
+#       type  = var.boot_disk_type
+#     }
+#   }
 
-  network_interface {
-     network    = google_compute_network.vpc.name
-     subnetwork = var.instance_subnet
-    access_config {
-      // Ephemeral IP assigned here
-    }
-  }
+#   network_interface {
+#      network    = google_compute_network.vpc.name
+#      subnetwork = var.instance_subnet
+#     access_config {
+#       // Ephemeral IP assigned here
+#     }
+#   }
 
 
 
-  metadata_startup_script = <<-SCRIPT
-    # Ensure /opt/webapp directory exists
-    mkdir -p /opt/webapp
+#   metadata_startup_script = <<-SCRIPT
+#     # Ensure /opt/webapp directory exists
+#     mkdir -p /opt/webapp
 
-    echo "working 1"
+#     echo "working 1"
 
-    CLOUD_SQL_PRIVATE_IP=$(gcloud sql instances describe ${google_sql_database_instance.cloudsql_instance.name} --format="get(ipAddresses[?type=PRIVATE].ipAddress)")
-    echo "working 2"
-    # Write the .env file
-    echo "MYSQL_USER=${google_sql_user.webapp_user.name}" > /opt/webapp/.env
-    echo "MYSQL_PASSWORD=${random_password.password.result}" >> /opt/webapp/.env
-    echo "MYSQL_HOST=${google_sql_database_instance.cloudsql_instance.private_ip_address}" >> /opt/webapp/.env
-    echo "MYSQL_PORT=3306" >> /opt/webapp/.env
-    echo "MYSQL_DATABASE=${google_sql_database.webapp.name}" >> /opt/webapp/.env
-    echo "working 3"
+#     CLOUD_SQL_PRIVATE_IP=$(gcloud sql instances describe ${google_sql_database_instance.cloudsql_instance.name} --format="get(ipAddresses[?type=PRIVATE].ipAddress)")
+#     echo "working 2"
+#     # Write the .env file
+#     echo "MYSQL_USER=${google_sql_user.webapp_user.name}" > /opt/webapp/.env
+#     echo "MYSQL_PASSWORD=${random_password.password.result}" >> /opt/webapp/.env
+#     echo "MYSQL_HOST=${google_sql_database_instance.cloudsql_instance.private_ip_address}" >> /opt/webapp/.env
+#     echo "MYSQL_PORT=3306" >> /opt/webapp/.env
+#     echo "MYSQL_DATABASE=${google_sql_database.webapp.name}" >> /opt/webapp/.env
+#     echo "working 3"
 
-    # Enable and start the csye6225.service 
-    sudo systemctl daemon-reload
-    sudo systemctl restart csye6225.service
-    sudo systemctl enable csye6225.service
-    echo "working 4"
-  SCRIPT
-    service_account {
-    email  = google_service_account.webapp_service_account.email
-    scopes = ["logging-write", "monitoring-write","https://www.googleapis.com/auth/pubsub"]
-  }
-}
+#     # Enable and start the csye6225.service 
+#     sudo systemctl daemon-reload
+#     sudo systemctl restart csye6225.service
+#     sudo systemctl enable csye6225.service
+#     echo "working 4"
+#   SCRIPT
+#     service_account {
+#     email  = google_service_account.webapp_service_account.email
+#     scopes = ["logging-write", "monitoring-write","https://www.googleapis.com/auth/pubsub"]
+#   }
+# }
 
 resource "google_sql_database_instance" "cloudsql_instance" {
   provider = google-beta
@@ -164,7 +164,9 @@ resource "google_dns_record_set" "a_record" {
   type         = "A"
   ttl          = 300
   managed_zone = "my-webapp-zone"
-  rrdatas      = [google_compute_instance.vm_instance.network_interface[0].access_config[0].nat_ip]
+  # rrdatas      = [google_compute_instance.vm_instance.network_interface[0].access_config[0].nat_ip]
+  rrdatas      = [google_compute_global_forwarding_rule.default.ip_address]
+
 }
 
 resource "google_service_account" "webapp_service_account" {
@@ -323,3 +325,168 @@ resource "google_cloudfunctions2_function" "app" {
 #     MAILGUN_API_KEY = "8c6f1d9935cc28e3d0adf07ad72903b8-309b0ef4-a193e503"
 #   }
 # }
+
+
+resource "google_compute_instance_template" "example_template" {
+  name_prefix        = "example-template-"
+  machine_type       = var.machine_type
+  # region             = var.region
+  tags = ["http-server"]
+
+  disk {
+    source_image = var.instance_image
+    auto_delete  = true
+    boot         = true
+    disk_size_gb = var.disk_size_gb
+    disk_type = var.boot_disk_type 
+  }
+
+  network_interface {
+    network    = google_compute_network.vpc.id
+    subnetwork = var.instance_subnet
+    access_config {
+      // Ephemeral IP assigned here
+    }
+  }
+
+  # scheduling {
+  #   preemptible        = false
+  #   automatic_restart  = true
+  #   on_host_maintenance = "MIGRATE"
+  # }
+
+  service_account {
+    email  = google_service_account.webapp_service_account.email
+    scopes = ["logging-write", "monitoring-write","https://www.googleapis.com/auth/pubsub"]
+  }
+
+  metadata = {
+    # ssh-keys = "your_ssh_key_here"
+    startup-script = <<-SCRIPT
+      # Ensure /opt/webapp directory exists
+      mkdir -p /opt/webapp
+
+      echo "working 1"
+
+      CLOUD_SQL_PRIVATE_IP=$(gcloud sql instances describe ${google_sql_database_instance.cloudsql_instance.name} --format="get(ipAddresses[?type=PRIVATE].ipAddress)")
+      echo "working 2"
+      # Write the .env file
+      echo "MYSQL_USER=${google_sql_user.webapp_user.name}" > /opt/webapp/.env
+      echo "MYSQL_PASSWORD=${random_password.password.result}" >> /opt/webapp/.env
+      echo "MYSQL_HOST=${google_sql_database_instance.cloudsql_instance.private_ip_address}" >> /opt/webapp/.env
+      echo "MYSQL_PORT=3306" >> /opt/webapp/.env
+      echo "MYSQL_DATABASE=${google_sql_database.webapp.name}" >> /opt/webapp/.env
+      echo "working 3"
+
+      # Enable and start the csye6225.service 
+      sudo systemctl daemon-reload
+      sudo systemctl restart csye6225.service
+      sudo systemctl enable csye6225.service
+      echo "working 4"
+    SCRIPT
+  }
+
+
+}
+
+# resource "google_compute_instance_from_template" "tpl" {
+#   name = "instance-from-template"
+#   zone = var.zone
+
+#   source_instance_template = google_compute_instance_template.example_template.self_link
+
+#   // Override fields from instance template
+#   can_ip_forward = false
+#   labels = {
+#     my_key = "my_value"
+#   }
+# }
+
+
+resource "google_compute_region_autoscaler" "example" {
+  name = "example-autoscaler"
+  region = var.region
+  target = google_compute_region_instance_group_manager.vm_region_group_manager.self_link
+
+  autoscaling_policy {
+    max_replicas = var.max_replicas
+    min_replicas = var.min_replicas
+    cooldown_period = var.cooldown_period
+
+    cpu_utilization {
+      target = 0.05
+    }
+  }
+  
+}
+
+resource "google_compute_health_check" "example_health_check" {
+  name               = "example-health-check"
+  check_interval_sec = 30
+  timeout_sec        = 5
+  unhealthy_threshold = 2
+  healthy_threshold   = 2
+  http_health_check {
+    port               = 3000
+    request_path       = "/healthz"
+  }
+}
+
+resource "google_compute_region_instance_group_manager" "vm_region_group_manager" {
+  name = "vm-region-group-manager"
+  region = var.region
+  base_instance_name = "vm"
+  target_size = null
+
+  version {
+    instance_template = google_compute_instance_template.example_template.self_link
+  }
+
+  named_port {
+    name = "http"
+    port = 3000
+  }
+
+  auto_healing_policies {
+    health_check = google_compute_health_check.example_health_check.self_link
+    initial_delay_sec = 300
+  }
+}
+
+
+resource "google_compute_managed_ssl_certificate" "default" {
+  name = "ssl-certificate"
+  managed {
+    domains = [var.domain_name]
+  }
+}
+
+resource "google_compute_backend_service" "default" {
+  name   = "backend-service"
+  protocol = "HTTP"
+  health_checks = [google_compute_health_check.example_health_check.self_link]
+
+  backend {
+    group = google_compute_region_instance_group_manager.vm_region_group_manager.instance_group
+  }
+}
+
+resource "google_compute_url_map" "default" {
+  name = "url-map"
+  default_service = google_compute_backend_service.default.self_link
+}
+
+resource "google_compute_target_https_proxy" "default" {
+  name = "https-proxy"
+  url_map = google_compute_url_map.default.self_link
+  ssl_certificates = [google_compute_managed_ssl_certificate.default.self_link]
+}
+
+resource "google_compute_global_forwarding_rule" "default" {
+  name   = "https-forwarding-rule"
+  target = google_compute_target_https_proxy.default.self_link
+  port_range = "443"
+}
+
+
+
