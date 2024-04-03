@@ -174,3 +174,20 @@ variable "port_no" {
   type        = number
   description = "The port number"
 }
+
+
+variable "max_replicas" {
+  description = "Maximum number of replicas for autoscaling"
+  type        = number
+}
+
+variable "min_replicas" {
+  description = "Minimum number of replicas for autoscaling"
+  type        = number
+}
+
+variable "cooldown_period" {
+  description = "Cooldown period in seconds for autoscaling"
+  type        = number
+}
+
