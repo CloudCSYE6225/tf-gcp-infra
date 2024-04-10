@@ -61,6 +61,8 @@ resource "google_compute_firewall" "allow_app_traffic" {
     protocol = var.app_protocol
     ports    = var.app_ports
   }
+  direction = "INGRESS"
+  priority = 1000
   source_ranges = ["130.211.0.0/22", "35.191.0.0/16"]
 }
 
@@ -124,13 +126,17 @@ resource "google_sql_database_instance" "cloudsql_instance" {
   region              = var.region
   database_version    = "MYSQL_8_0"
   deletion_protection = false
-  depends_on = [google_service_networking_connection.default]  
+  # depends_on = [google_service_networking_connection.default] 
+  depends_on = [google_service_networking_connection.default, google_kms_crypto_key_iam_binding.crypto_key_sql] 
   settings {
     tier                        = "db-custom-1-3840"
     activation_policy           = "ALWAYS"
     availability_type           = "REGIONAL"
     disk_size                   = 100
     disk_type                   = "pd-ssd"
+    # disk_encryption_configuration {
+    #   kms_key_name = google_kms_crypto_key.cloudsql_crypto_key.key_ring
+    # }
     ip_configuration {
       ipv4_enabled              = false
       private_network           = google_compute_network.vpc.id
@@ -140,6 +146,7 @@ resource "google_sql_database_instance" "cloudsql_instance" {
       binary_log_enabled = true 
     }
   }
+  encryption_key_name = var.cloudsql_keyid
 
 }
 
@@ -214,7 +221,11 @@ resource "google_pubsub_subscription" "verify_email_subscription" {
 
 resource "google_storage_bucket" "bucket" {
   name     = var.bucket_name
-  location = var.bucket_location
+  location = var.region
+  depends_on = [google_kms_crypto_key_iam_binding.crypto_key_bucket]
+  encryption {
+    default_kms_key_name = "projects/cloudwebap98demo/locations/us-east1/keyRings/example-key-ring-10/cryptoKeys/bucket-cmek-key"
+  }
 }
 
 resource "google_storage_bucket_object" "archive" {
@@ -327,18 +338,22 @@ resource "google_cloudfunctions2_function" "app" {
 # }
 
 
-resource "google_compute_instance_template" "example_template" {
+resource "google_compute_region_instance_template" "example_template" {
   name_prefix        = "example-template-"
   machine_type       = var.machine_type
   # region             = var.region
   tags = ["http-server"]
+  depends_on = [google_kms_crypto_key_iam_binding.crypto_key_template]
 
   disk {
     source_image = var.instance_image
     auto_delete  = true
     boot         = true
     disk_size_gb = var.disk_size_gb
-    disk_type = var.boot_disk_type 
+    disk_type = var.boot_disk_type
+    disk_encryption_key {
+      kms_key_self_link = var.template_keyid
+    }
   }
 
   network_interface {
@@ -439,7 +454,7 @@ resource "google_compute_region_instance_group_manager" "vm_region_group_manager
   target_size = null
 
   version {
-    instance_template = google_compute_instance_template.example_template.self_link
+    instance_template = google_compute_region_instance_template.example_template.self_link
   }
 
   named_port {
@@ -488,5 +503,71 @@ resource "google_compute_global_forwarding_rule" "default" {
   port_range = "443"
 }
 
+resource "google_kms_key_ring" "example_key_ring" {
+  name     = var.key_ring_name
+  location = var.region
+  project = var.project_id
+}
 
+resource "google_kms_crypto_key" "vm_crypto_key" {
+  name            = "vm-cmek-key"
+  key_ring        = google_kms_key_ring.example_key_ring.id
+  rotation_period = "2592000s"
 
+  lifecycle {
+    prevent_destroy = false
+  }
+
+  # Add more configuration options as needed
+}
+
+resource "google_kms_crypto_key" "cloudsql_crypto_key" {
+  name            = "cloudsql-cmek-key"
+  key_ring        = google_kms_key_ring.example_key_ring.id
+  rotation_period = "2592000s" # Set rotation period as needed
+
+  lifecycle {
+    prevent_destroy = false
+  }
+
+  # Add more configuration options as needed
+}
+
+resource "google_kms_crypto_key" "bucket_crypto_key" {
+  name            = "bucket-cmek-key"
+  key_ring        = google_kms_key_ring.example_key_ring.id
+  rotation_period = "2592000s" # Set rotation period as needed
+
+  lifecycle {
+    prevent_destroy = false
+  }
+
+  # Add more configuration options as needed
+}
+
+resource "google_project_service_identity" "gcp_sa_cloud_sql" {
+  provider = google-beta
+  project = var.project_id
+  service = "sqladmin.googleapis.com"
+}
+
+resource "google_kms_crypto_key_iam_binding" "crypto_key_sql" {
+  crypto_key_id = var.cloudsql_keyid
+  role = "roles/cloudkms.cryptoKeyEncrypterDecrypter"
+
+  members = ["serviceAccount:${google_project_service_identity.gcp_sa_cloud_sql.email}"]
+}
+
+resource "google_kms_crypto_key_iam_binding" "crypto_key_template" {
+  crypto_key_id = var.template_keyid
+  role = "roles/cloudkms.cryptoKeyEncrypterDecrypter"
+
+  members = ["serviceAccount:service-795123876489@compute-system.iam.gserviceaccount.com"]
+}
+
+resource "google_kms_crypto_key_iam_binding" "crypto_key_bucket" {
+  crypto_key_id = var.bucket_keyid
+  role = "roles/cloudkms.cryptoKeyEncrypterDecrypter"
+
+  members = ["serviceAccount:service-795123876489@gs-project-accounts.iam.gserviceaccount.com"]
+}

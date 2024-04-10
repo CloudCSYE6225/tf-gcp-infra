@@ -190,3 +190,37 @@ variable "cooldown_period" {
   type        = number
 }
 
+variable "key_ring_name" {
+  type        = string
+  description = "The name of the key ring"
+}
+
+variable "vm_crypto_key" {
+  type        = string
+  description = "The name of the VM crypto key"
+}
+
+variable "cloudsql_crypto_key" {
+  type        = string
+  description = "The name of the Cloud SQL crypto key"
+}
+
+variable "storage_crypto_key" {
+  type        = string
+  description = "The name of the storage crypto key"
+}
+
+variable "cloudsql_keyid" {
+  type        = string
+  description = "The key ID for the Cloud SQL crypto key"
+}
+
+variable "template_keyid" {
+  type        = string
+  description = "The key ID for the VM crypto key"
+}
+
+variable "bucket_keyid" {
+  type        = string
+  description = "The key ID for the storage crypto key"
+}
